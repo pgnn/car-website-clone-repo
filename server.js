@@ -1,32 +1,16 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const app = express();
 
 const PORT = process.env.PORT || 3000;
 const VERSION = process.env.CAR_VERSION || 'v1';
 
-// Load map image
-let MAP_DATA_URI = '';
-try {
-  const mapPath = path.join(__dirname, 'public/map.jpeg');
-  if (fs.existsSync(mapPath)) {
-    const mapBuffer = fs.readFileSync(mapPath);
-    MAP_DATA_URI = `data:image/jpeg;base64,${mapBuffer.toString('base64')}`;
-    console.log(`✅ Map loaded: ${(mapBuffer.length / 1024).toFixed(2)}KB`);
-  } else {
-    console.warn(`⚠️ Map file not found at ${mapPath}`);
-  }
-} catch (err) {
-  console.error(`❌ Error loading map: ${err.message}`);
-}
-
 app.use(express.static(path.join(__dirname, 'public')));
 
 const cars = [
-  { name: 'InnoCar Model 1', unique: 'Three rows of seating with all-terrain traction control', tagline: 'Room for the whole crew', image: '/images/suv.jpg' },
-  { name: 'InnoCar Model 2', unique: '2-ton towing capacity with reinforced steel bed', tagline: 'Built for the job site', image: '/images/pickup.jpg' },
-  { name: 'InnoCar Model 3', unique: 'Retractable hardtop in under 12 seconds', tagline: 'Top down, every weekend', image: '/images/convertible.jpg', imgWidth: 900, imgHeight: 450 },
+  { name: 'InnoCar Model 1', unique: 'Three rows of seating with all-terrain traction control', tagline: 'Room for the whole crew', image: '/1.jpeg' },
+  { name: 'InnoCar Model 2', unique: '2-ton towing capacity with reinforced steel bed', tagline: 'Built for the job site', image: '/2.jpeg' },
+  { name: 'InnoCar Model 3', unique: 'Retractable hardtop in under 12 seconds', tagline: 'Top down, every weekend', image: '/3.jpeg' },
 ];
 
 app.get('/', (req, res) => {
@@ -137,128 +121,6 @@ app.get('/', (req, res) => {
             font-size: 0.75rem;
             padding: 20px;
           }
-          .fleet-section {
-            padding: 60px 24px;
-            background: linear-gradient(180deg, #0a0a0b 0%, #141516 100%);
-            border-top: 1px solid #2b2b2d;
-            text-align: center;
-          }
-          .fleet-header {
-            max-width: 1000px;
-            margin: 0 auto 40px;
-          }
-          .fleet-header h2 {
-            margin: 0 0 12px;
-            font-size: 2rem;
-            letter-spacing: 0.5px;
-          }
-          .fleet-header p {
-            color: #8a8d92;
-            font-size: 0.95rem;
-            margin: 0;
-          }
-          .fleet-stats {
-            display: flex;
-            gap: 30px;
-            justify-content: center;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-          }
-          .stat {
-            background: #17181a;
-            border: 1px solid #2b2b2d;
-            border-radius: 12px;
-            padding: 16px 24px;
-            min-width: 150px;
-          }
-          .stat-value {
-            font-size: 2.2rem;
-            font-weight: 700;
-            color: #d7d9dc;
-            margin: 0;
-          }
-          .stat-label {
-            font-size: 0.85rem;
-            color: #8a8d92;
-            margin: 6px 0 0;
-          }
-          #map {
-            width: 100%;
-            max-width: 900px;
-            height: 400px;
-            margin: 0 auto;
-            border-radius: 14px;
-            border: 1px solid #2b2b2d;
-            background: #17181a;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-          }
-          svg { display: block; }
-          .taxi-dot {
-            fill: #d7d9dc;
-            stroke: #e8e8ea;
-            stroke-width: 1;
-          }
-          .taxi-dot:hover {
-            fill: #e8e8ea;
-          }
-          .taxi-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-          }
-          .taxi-item {
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            background: #d7d9dc;
-            border: 2px solid #e8e8ea;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: all 0.2s ease;
-          }
-          .taxi-item:hover {
-            background: #e8e8ea;
-            transform: scale(1.3);
-          }
-          .city-map {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            background-image: url('${MAP_DATA_URI}');
-            background-size: cover;
-            background-position: center;
-            background-color: #17181a;
-            overflow: hidden;
-          }
-          .city-streets {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: none;
-          }
-          .taxi-pins {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-          }
-          .taxi-pin {
-            position: absolute;
-            width: 14px;
-            height: 14px;
-            background: #ffd700;
-            border: 2px solid #ffed4e;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
-          }
-          .taxi-pin:hover {
-            width: 20px;
-            height: 20px;
-            margin-left: -3px;
-            margin-top: -3px;
-            box-shadow: 0 0 12px rgba(255, 215, 0, 0.9);
-          }
         </style>
       </head>
       <body>
@@ -267,102 +129,17 @@ app.get('/', (req, res) => {
           <p>Build: ${VERSION}</p>
         </header>
         <div class="grid">${cards}</div>
-        <div class="fleet-section">
-          <div class="fleet-header">
-            <h2>Frankfurt Autonomous Taxi Fleet</h2>
-            <p>Real-time taxi locations across Frankfurt</p>
-          </div>
-          <div class="fleet-stats">
-            <div class="stat">
-              <p class="stat-value" id="taxi-count">0</p>
-              <p class="stat-label">Available Taxis</p>
-            </div>
-            <div class="stat">
-              <p class="stat-value">Frankfurt</p>
-              <p class="stat-label">Service City</p>
-            </div>
-          </div>
-          <div id="map"></div>
-        </div>
         <footer>&copy; InnoCar Motors - demo build</footer>
-        <script>
-          async function loadTaxis() {
-            try {
-              const response = await fetch('/api/taxis');
-              const taxis = await response.json();
-              document.getElementById('taxi-count').textContent = taxis.length;
-
-              const mapEl = document.getElementById('map');
-
-              // Create city map
-              const cityMap = document.createElement('div');
-              cityMap.className = 'city-map';
-
-              const streets = document.createElement('div');
-              streets.className = 'city-streets';
-              cityMap.appendChild(streets);
-
-              const pins = document.createElement('div');
-              pins.className = 'taxi-pins';
-
-              // Place taxi pins
-              taxis.forEach(taxi => {
-                const pin = document.createElement('div');
-                pin.className = 'taxi-pin';
-                pin.title = taxi.id;
-
-                // Support both x,y (0-1000) and lat,lng formats
-                let x, y;
-                if (taxi.x !== undefined && taxi.y !== undefined) {
-                  // New format: x,y are 0-1000
-                  x = (taxi.x / 1000) * 100;
-                  y = (taxi.y / 1000) * 100;
-                } else {
-                  // Old format: lat,lng - map to percentage (Berlin area: ~52.5, ~13.4)
-                  x = ((taxi.lng - 13.3) / 0.2) * 100;
-                  y = ((52.6 - taxi.lat) / 0.15) * 100;
-                }
-
-                pin.style.left = Math.max(0, Math.min(100, x)) + '%';
-                pin.style.top = Math.max(0, Math.min(100, y)) + '%';
-                pin.style.transform = 'translate(-50%, -50%)';
-
-                pins.appendChild(pin);
-              });
-
-              cityMap.appendChild(pins);
-              mapEl.appendChild(cityMap);
-            } catch (err) {
-              console.error('Error loading taxis:', err);
-              document.getElementById('taxi-count').textContent = 'Error';
-            }
-          }
-
-          window.addEventListener('load', loadTaxis);
-        </script>
       </body>
     </html>
   `);
 });
 
-// simple health check for pipeline/deploy verification
 app.get('/health', (req, res) => res.status(200).json({ status: 'ok', version: VERSION }));
-
 app.get('/api/cars', (req, res) => res.json(cars));
-
-app.get('/api/taxis', async (req, res) => {
-  try {
-    const response = await fetch('https://infra-demo-pn.s3.eu-central-1.amazonaws.com/taxis.json');
-    const taxis = await response.json();
-    res.json(taxis);
-  } catch (err) {
-    console.error('Error fetching taxis:', err);
-    res.status(500).json({ error: 'Failed to fetch taxis' });
-  }
-});
 
 if (require.main === module) {
   app.listen(PORT, () => console.log(`InnoCar running on port ${PORT}, version ${VERSION}`));
 }
 
-module.exports = app;// trigger test
+module.exports = app;
