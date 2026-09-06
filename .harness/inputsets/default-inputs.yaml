@@ -1,0 +1,12 @@
+inputSet:
+  name: Default Inputs
+  identifier: default_inputs
+  projectIdentifier: Phuong_Sandbox_v2
+  orgIdentifier: Sandbox
+  pipeline:
+    identifier: deploy_car_website
+    variables:
+      - name: serviceVersion
+        value: "1.0.0"
+      - name: environment
+        value: "staging"
