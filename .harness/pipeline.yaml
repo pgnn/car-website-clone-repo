@@ -1,0 +1,51 @@
+pipeline:
+  name: Deploy Car Website Service
+  identifier: deploy_car_website
+  projectIdentifier: devx_ai
+  orgIdentifier: Sandbox
+  
+  variables:
+    - name: serviceVersion
+      type: String
+      value: "1.0.0"
+  
+  stages:
+    - stage:
+        name: Build
+        identifier: build_stage
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          steps:
+            - step:
+                type: Run
+                name: Build Service
+                identifier: build_service
+                spec:
+                  shell: Bash
+                  command: |
+                    echo "🔨 Building car website"
+                    npm install
+                    npm run build
+    
+    - stage:
+        name: Approval
+        identifier: approval_stage
+        type: Approval
+        template:
+          templateRef: security_approval_step
+          versionLabel: "1.0"
+          scope: org
+    
+    - stage:
+        name: Deploy
+        identifier: deploy_stage
+        type: CD
+        spec:
+          deploymentType: Kubernetes

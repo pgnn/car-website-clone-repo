@@ -1,0 +1,17 @@
+template:
+  name: Security Approval Template
+  identifier: security_approval_step
+  versionLabel: "1.0"
+  type: Step
+  projectIdentifier: devx_ai
+  orgIdentifier: Sandbox
+  
+  spec:
+    type: Approval
+    spec:
+      approvalStep:
+        name: Security Review & Approval
+        timeout: 7d
+        approvers:
+          - user: ops-team
+        approvalMessage: "Approve deployment to production"
