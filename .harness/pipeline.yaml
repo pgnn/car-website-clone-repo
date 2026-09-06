@@ -1,51 +1,232 @@
 pipeline:
-  name: Deploy Car Website Service
-  identifier: deploy_car_website
+  name: car-website-clone-repo
+  identifier: carwebsiteclonerepo
   projectIdentifier: Phuong_Sandbox_v2
-  orgIdentifier: Sandbox
-  
-  variables:
-    - name: serviceVersion
-      type: String
-      value: "1.0.0"
-  
+  orgIdentifier: sandbox
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: GH_PN
+        repoName: car-website
+        build: <+input>
   stages:
     - stage:
         name: Build
-        identifier: build_stage
+        identifier: Build
+        description: ""
         type: CI
         spec:
           cloneCodebase: true
+          caching:
+            enabled: true
+            override: false
+          buildIntelligence:
+            enabled: true
           platform:
             os: Linux
             arch: Amd64
           runtime:
             type: Cloud
             spec: {}
-          steps:
-            - step:
-                type: Run
-                name: Build Service
-                identifier: build_service
-                spec:
-                  shell: Bash
-                  command: |
-                    echo "🔨 Building car website"
-                    npm install
-                    npm run build
-    
+          execution:
+            steps:
+              - step:
+                  type: Agent
+                  name: PR Review
+                  identifier: PR_Review
+                  spec:
+                    agentName: ca_pr_review
+                    agentSettings: {}
+                  when:
+                    stageStatus: Failure
+              - step:
+                  type: HarnessSAST
+                  name: Harness SAST and SCA
+                  identifier: HarnessCode
+                  spec:
+                    mode: orchestration
+                    config: sast_sca
+                    target:
+                      type: repository
+                      detection: auto
+                    advanced:
+                      log:
+                        level: info
+                  when:
+                    stageStatus: Failure
+              - step:
+                  type: Agent
+                  name: Security Remediation
+                  identifier: Security_Remediation
+                  spec:
+                    agentName: ca_security_remediation
+                    agentSettings: {}
+                  when:
+                    stageStatus: Failure
+              - step:
+                  name: Build Push Docker
+                  identifier: Build_Push_Car
+                  template:
+                    templateRef: Build_Push_Car
+                    versionLabel: v1
     - stage:
-        name: Approval
-        identifier: approval_stage
+        name: Change Mgmt
+        identifier: Approval
+        description: ""
         type: Approval
-        template:
-          templateRef: security_approval_step
-          versionLabel: "1.0"
-          scope: org
-    
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: Jira Create
+                  identifier: Jira_Create
+                  type: JiraCreate
+                  timeout: 5m
+                  spec:
+                    connectorRef: account.Harness_JIRA
+                    projectKey: HD
+                    issueType: Story
+                    fields:
+                      - name: Summary
+                        value: "Deploy approval: <+pipeline.name> - run #<+pipeline.sequenceId>"
+              - step:
+                  name: Jira Approval
+                  identifier: Jira_Approval
+                  type: JiraApproval
+                  timeout: 1d
+                  spec:
+                    approvalCriteria:
+                      type: KeyValues
+                      spec:
+                        matchAnyCondition: true
+                        conditions:
+                          - key: Status
+                            operator: equals
+                            value: Done
+                    rejectionCriteria:
+                      type: KeyValues
+                      spec:
+                        matchAnyCondition: true
+                        conditions: []
+                    connectorRef: account.Harness_JIRA
+                    retryInterval: 1m
+                    issueKey: <+pipeline.stages.Approval.spec.execution.steps.Jira_Create.issue.key>
+              - step:
+                  name: Jira Update
+                  identifier: Jira_Update
+                  type: JiraUpdate
+                  timeout: 5m
+                  spec:
+                    connectorRef: Jira_PN
+                    issueKey: <+pipeline.stages.Approval.spec.execution.steps.Jira_Create.issue.key>
+                    fields: []
+        tags: {}
+        when:
+          pipelineStatus: Failure
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: Ignore
     - stage:
         name: Deploy
-        identifier: deploy_stage
-        type: CD
+        identifier: Deploy
+        description: ""
+        type: Deployment
         spec:
           deploymentType: Kubernetes
+          service:
+            serviceRef: CarApp
+            serviceInputs:
+              serviceDefinition:
+                type: Kubernetes
+                spec:
+                  artifacts:
+                    primary:
+                      primaryArtifactRef: <+input>
+                      sources: <+input>
+          environment:
+            environmentRef: k8s
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: k8s_infra
+          execution:
+            steps:
+              - step:
+                  type: Policy
+                  name: Vulnerabilities_Gate
+                  identifier: Policy_1
+                  spec:
+                    policySets:
+                      - new_policy_set_09_04_21_45
+                    type: Custom
+                    policySpec:
+                      payload: |-
+                        [
+                          {
+                            "name": "output",
+                            "outcome": {
+                              "outputVariables": {
+                                "CRITICAL": "<+pipeline.stages.Build.spec.execution.steps.HarnessCode.output.outputVariables.CRITICAL>",
+                                "HIGH": "<+pipeline.stages.Build.spec.execution.steps.HarnessCode.output.outputVariables.HIGH>",
+                                "MEDIUM": "<+pipeline.stages.Build.spec.execution.steps.HarnessCode.output.outputVariables.MEDIUM>",
+                                "LOW": "<+pipeline.stages.Build.spec.execution.steps.HarnessCode.output.outputVariables.LOW>",
+                                "INFO": "<+pipeline.stages.Build.spec.execution.steps.HarnessCode.output.outputVariables.INFO>",
+                                "TOTAL": "<+pipeline.stages.Build.spec.execution.steps.HarnessCode.output.outputVariables.TOTAL>"
+                              }
+                            }
+                          }
+                        ]
+                  timeout: 10m
+                  when:
+                    stageStatus: Failure
+              - step:
+                  name: Stage Deployment
+                  identifier: stageDeployment
+                  type: K8sBlueGreenDeploy
+                  timeout: 4m
+                  spec:
+                    skipDryRun: true
+                    pruningEnabled: false
+                    skipUnchangedManifest: false
+              - step:
+                  name: Swap primary with stage service
+                  identifier: bgSwapServices
+                  type: K8sBGSwapServices
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+            rollbackSteps:
+              - step:
+                  name: Swap primary with stage service
+                  identifier: rollbackBgSwapServices
+                  type: K8sBGSwapServices
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+              - step:
+                  type: ShellScript
+                  name: Trigger Manifest Remediator Agent
+                  identifier: Trigger_Manifest_Remediator_Agent
+                  spec:
+                    shell: Bash
+                    executionTarget: {}
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          curl -X POST -H 'content-type: application/json' \
+                            --url 'https://app.harness.io/gateway/pipeline/api/webhook/custom/v2?accountIdentifier=EeRjnXTnS4GrLG5VNNJZUw&orgIdentifier=sandbox&projectIdentifier=Phuong_Sandbox_v2&pipelineIdentifier=Kubernetes_Remediation&triggerIdentifier=remediation_webhook' \
+                            -d '{"executionUrl": "<+pipeline.executionUrl>"}'
+                    environmentVariables: []
+                    outputVariables: []
+                  timeout: 5m
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
