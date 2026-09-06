@@ -1,12 +1,14 @@
 inputSet:
-  name: default-inputs
   identifier: default_inputs
+  name: default-inputs
+  orgIdentifier: sandbox
   projectIdentifier: Phuong_Sandbox_v2
-  orgIdentifier: Sandbox
   pipeline:
-    identifier: deploy_car_website
-    variables:
-      - name: serviceVersion
-        value: "1.0.0"
-      - name: environment
-        value: "staging"
+    identifier: carwebsiteclonerepo
+    properties:
+      ci:
+        codebase:
+          build:
+            type: branch
+            spec:
+              branch: main
