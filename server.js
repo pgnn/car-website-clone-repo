@@ -1,9 +1,24 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const app = express();
 
 const PORT = process.env.PORT || 3000;
 const VERSION = process.env.CAR_VERSION || 'v1';
+
+let MAP_DATA_URI = '';
+try {
+  const mapPath = path.join(__dirname, 'public/map.jpeg');
+  if (fs.existsSync(mapPath)) {
+    const mapBuffer = fs.readFileSync(mapPath);
+    MAP_DATA_URI = `data:image/jpeg;base64,${mapBuffer.toString('base64')}`;
+    console.log(`✅ Map loaded: ${(mapBuffer.length / 1024).toFixed(2)}KB`);
+  } else {
+    console.warn(`⚠️ Map file not found at ${mapPath}`);
+  }
+} catch (err) {
+  console.error(`❌ Error loading map: ${err.message}`);
+}
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -80,10 +95,10 @@ app.get('/', (req, res) => {
           }
           .card img {
             width: 100%;
-            height: 180px;
+            height: 160px;
             object-fit: cover;
             border-radius: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 16px;
           }
           .badge {
             display: inline-block;
@@ -97,19 +112,19 @@ app.get('/', (req, res) => {
             margin-bottom: 10px;
           }
           .card h2 {
-            margin: 0 0 6px;
+            margin: 0 0 8px;
             font-size: 1.3rem;
           }
           .tagline {
             color: #8a8d92;
             font-size: 0.85rem;
-            margin: 0 0 14px;
+            margin: 0 0 16px;
           }
           .unique {
             font-size: 0.9rem;
             color: #c7cad0;
             font-weight: 600;
-            margin: 0 0 16px;
+            margin: 0 0 18px;
           }
           button {
             width: 100%;
@@ -122,6 +137,95 @@ app.get('/', (req, res) => {
             cursor: pointer;
           }
           button:hover { background: linear-gradient(135deg, #eceded, #a3a6ad); }
+          .fleet-section {
+            padding: 60px 24px;
+            background: linear-gradient(180deg, #0a0a0b 0%, #141516 100%);
+            border-top: 1px solid #2b2b2d;
+            text-align: center;
+          }
+          .fleet-header {
+            max-width: 1000px;
+            margin: 0 auto 40px;
+          }
+          .fleet-header h2 {
+            margin: 0 0 12px;
+            font-size: 2rem;
+            letter-spacing: 0.5px;
+          }
+          .fleet-header p {
+            color: #8a8d92;
+            font-size: 0.95rem;
+            margin: 0;
+          }
+          .fleet-stats {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+          }
+          .stat {
+            background: #17181a;
+            border: 1px solid #2b2b2d;
+            border-radius: 12px;
+            padding: 16px 24px;
+            min-width: 150px;
+          }
+          .stat-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #d7d9dc;
+            margin: 0;
+          }
+          .stat-label {
+            font-size: 0.85rem;
+            color: #8a8d92;
+            margin: 6px 0 0;
+          }
+          #map {
+            width: 100%;
+            max-width: 900px;
+            height: 400px;
+            margin: 0 auto;
+            border-radius: 14px;
+            border: 1px solid #2b2b2d;
+            background: #17181a;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+          }
+          .city-map {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-image: url('${MAP_DATA_URI}');
+            background-size: cover;
+            background-position: center;
+            background-color: #17181a;
+            overflow: hidden;
+            border-radius: 14px;
+          }
+          .taxi-pins {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+          }
+          .taxi-pin {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #ffd700;
+            border: 2px solid #ffed4e;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+          }
+          .taxi-pin:hover {
+            width: 20px;
+            height: 20px;
+            margin-left: -3px;
+            margin-top: -3px;
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.9);
+          }
           footer {
             text-align: center;
             color: #55585c;
@@ -136,7 +240,69 @@ app.get('/', (req, res) => {
           <p>Build: ${VERSION}</p>
         </header>
         <div class="grid">${cards}</div>
+        <div class="fleet-section">
+          <div class="fleet-header">
+            <h2>Frankfurt Autonomous Taxi Fleet</h2>
+            <p>Real-time taxi locations across Frankfurt</p>
+          </div>
+          <div class="fleet-stats">
+            <div class="stat">
+              <p class="stat-value" id="taxi-count">0</p>
+              <p class="stat-label">Available Taxis</p>
+            </div>
+            <div class="stat">
+              <p class="stat-value">Frankfurt</p>
+              <p class="stat-label">Service City</p>
+            </div>
+          </div>
+          <div id="map"></div>
+        </div>
         <footer>&copy; InnoCar Motors - demo build</footer>
+        <script>
+          async function loadTaxis() {
+            try {
+              const response = await fetch('/api/taxis');
+              const taxis = await response.json();
+              document.getElementById('taxi-count').textContent = taxis.length;
+
+              const mapEl = document.getElementById('map');
+              const cityMap = document.createElement('div');
+              cityMap.className = 'city-map';
+
+              const pins = document.createElement('div');
+              pins.className = 'taxi-pins';
+
+              taxis.forEach(taxi => {
+                const pin = document.createElement('div');
+                pin.className = 'taxi-pin';
+                pin.title = taxi.id;
+
+                let x, y;
+                if (taxi.x !== undefined && taxi.y !== undefined) {
+                  x = (taxi.x / 1000) * 100;
+                  y = (taxi.y / 1000) * 100;
+                } else {
+                  x = ((taxi.lng - 13.3) / 0.2) * 100;
+                  y = ((52.6 - taxi.lat) / 0.15) * 100;
+                }
+
+                pin.style.left = Math.max(0, Math.min(100, x)) + '%';
+                pin.style.top = Math.max(0, Math.min(100, y)) + '%';
+                pin.style.transform = 'translate(-50%, -50%)';
+
+                pins.appendChild(pin);
+              });
+
+              cityMap.appendChild(pins);
+              mapEl.appendChild(cityMap);
+            } catch (err) {
+              console.error('Error loading taxis:', err);
+              document.getElementById('taxi-count').textContent = 'Error';
+            }
+          }
+
+          window.addEventListener('load', loadTaxis);
+        </script>
       </body>
     </html>
   `);
@@ -144,6 +310,17 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => res.status(200).json({ status: 'ok', version: VERSION }));
 app.get('/api/cars', (req, res) => res.json(cars));
+
+app.get('/api/taxis', async (req, res) => {
+  try {
+    const response = await fetch('https://infra-demo-pn.s3.eu-central-1.amazonaws.com/taxis.json');
+    const taxis = await response.json();
+    res.json(taxis);
+  } catch (err) {
+    console.error('Error fetching taxis:', err);
+    res.status(500).json({ error: 'Failed to fetch taxis' });
+  }
+});
 
 if (require.main === module) {
   app.listen(PORT, () => console.log(`InnoCar running on port ${PORT}, version ${VERSION}`));
