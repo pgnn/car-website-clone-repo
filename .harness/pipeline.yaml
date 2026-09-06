@@ -151,7 +151,7 @@ pipeline:
             environmentRef: k8s
             deployToAll: false
             infrastructureDefinitions:
-              - identifier: k8s_infra
+              - identifier: South_k8s_infra
           execution:
             steps:
               - step:
