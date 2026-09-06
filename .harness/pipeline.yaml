@@ -8,7 +8,7 @@ pipeline:
     ci:
       codebase:
         connectorRef: GH_PN
-        repoName: car-website
+        repoName: car-website-clone-repo
         build: <+input>
   stages:
     - stage:
