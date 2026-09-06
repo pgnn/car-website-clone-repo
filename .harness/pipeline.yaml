@@ -1,7 +1,7 @@
 pipeline:
   name: Deploy Car Website Service
   identifier: deploy_car_website
-  projectIdentifier: devx_ai
+  projectIdentifier: Phuong_Sandbox_v2
   orgIdentifier: Sandbox
   
   variables:
