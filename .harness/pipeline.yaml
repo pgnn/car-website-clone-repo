@@ -91,28 +91,6 @@ pipeline:
                       - name: Summary
                         value: "Deploy approval: <+pipeline.name> - run #<+pipeline.sequenceId>"
               - step:
-                  name: Jira Approval
-                  identifier: Jira_Approval
-                  type: JiraApproval
-                  timeout: 1d
-                  spec:
-                    approvalCriteria:
-                      type: KeyValues
-                      spec:
-                        matchAnyCondition: true
-                        conditions:
-                          - key: Status
-                            operator: equals
-                            value: Done
-                    rejectionCriteria:
-                      type: KeyValues
-                      spec:
-                        matchAnyCondition: true
-                        conditions: []
-                    connectorRef: account.Harness_JIRA
-                    retryInterval: 1m
-                    issueKey: <+pipeline.stages.Approval.spec.execution.steps.Jira_Create.issue.key>
-              - step:
                   name: Jira Update
                   identifier: Jira_Update
                   type: JiraUpdate
